@@ -135,14 +135,18 @@ const Column = ({ column, tasks }: ColumnProps) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="column"
+      className="column bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 min-w-[280px] max-w-[280px] flex flex-col h-[calc(100vh-160px)] transition-colors duration-200"
     >
-      <div className="column-header" {...attributes} {...listeners}>
+      <div 
+        className="column-header flex items-center justify-between p-2 rounded-t-lg mb-2 cursor-grab bg-gray-50 dark:bg-gray-700" 
+        {...attributes} 
+        {...listeners}
+      >
         {isEditing ? (
           <div className="flex items-center w-full">
             <input
               type="text"
-              className="flex-1 p-1 border rounded mr-2"
+              className="flex-1 p-2 border dark:border-gray-600 rounded mr-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
@@ -153,7 +157,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
               }}
             />
             <button
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-200"
               onClick={handleCancelTitleEdit}
             >
               Cancel
@@ -161,36 +165,51 @@ const Column = ({ column, tasks }: ColumnProps) => {
           </div>
         ) : (
           <>
-            <div className="cursor-grab" onDoubleClick={() => setIsEditing(true)}>
+            <div 
+              className="font-medium text-gray-800 dark:text-gray-200 cursor-grab flex items-center" 
+              onDoubleClick={() => setIsEditing(true)}
+            >
+              <span className="w-2 h-2 rounded-full bg-primary-500 mr-2"></span>
               {column.title}
             </div>
             <div className="flex space-x-2">
               <button
-                className="text-gray-500 hover:text-gray-700"
+                className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-200"
                 onClick={() => setIsEditing(true)}
+                aria-label="Edit column"
               >
-                Edit
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
               </button>
               <button
-                className="text-red-500 hover:text-red-700"
+                className="p-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200"
                 onClick={handleDeleteColumn}
+                aria-label="Delete column"
               >
-                Delete
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
               </button>
             </div>
           </>
         )}
       </div>
       
-      <TaskList id={column.id} tasks={tasks} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar mb-2">
+        <TaskList id={column.id} tasks={tasks} />
+      </div>
       
       {isAddingTask ? (
-        <div className="mt-2 p-2 bg-gray-100 rounded" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="mt-auto p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm transition-colors duration-200" 
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Use a div instead of a form to prevent implicit submissions */}
           <div>
             <input
               type="text"
-              className="w-full p-1 mb-2 border rounded"
+              className="w-full p-2 mb-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               placeholder="Task title"
               value={newTaskTitle}
               onChange={handleTaskTitleChange}
@@ -199,7 +218,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
             />
             <textarea
               id="task-description"
-              className="w-full p-1 mb-2 border rounded text-sm"
+              className="w-full p-2 mb-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               placeholder="Description (optional)"
               value={newTaskDescription}
               onChange={handleTaskDescriptionChange}
@@ -209,33 +228,36 @@ const Column = ({ column, tasks }: ColumnProps) => {
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
                 onClick={handleCancelAddTask}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
                 onClick={handleAddTask}
               >
-                Add
+                Add Task
               </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="w-full mt-2">
+        <div className="mt-auto">
           <button
             type="button"
-            className="w-full p-2 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded text-center"
+            className="w-full p-2 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md text-center flex items-center justify-center transition-colors duration-200 group"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               setIsAddingTask(true);
             }}
           >
-            + Add Task
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1 text-primary-500 group-hover:text-primary-600 dark:group-hover:text-primary-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Add Task
           </button>
         </div>
       )}
