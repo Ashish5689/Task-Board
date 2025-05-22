@@ -29,6 +29,7 @@ const SortableTaskCard = ({ task, columnId }: SortableTaskCardProps) => {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    zIndex: isDragging ? 10 : 1,
   };
 
   return (
@@ -37,12 +38,19 @@ const SortableTaskCard = ({ task, columnId }: SortableTaskCardProps) => {
       style={style}
       {...attributes}
       {...listeners}
+      className={`touch-manipulation ${isDragging ? 'relative' : ''}`}
+      data-dragging={isDragging ? 'true' : 'false'}
+      aria-roledescription="Draggable task"
+      aria-label={`Task: ${task.title}`}
     >
       <TaskCard 
         task={task} 
         columnId={columnId} 
         isDragging={isDragging}
       />
+      {isDragging && (
+        <div className="absolute inset-0 bg-secondary-100 dark:bg-secondary-900 opacity-20 rounded-lg pointer-events-none" />
+      )}
     </div>
   );
 };

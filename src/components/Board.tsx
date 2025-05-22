@@ -6,6 +6,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  MeasuringStrategy,
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { 
@@ -101,24 +102,42 @@ const Board = () => {
     if (!over) return;
     
     if (active.id !== over.id) {
+      // Determine the correct source and destination
+      const activeType = active.data.current?.type;
+      const overType = over.data.current?.type;
+      
+      // Get source information
+      const sourceColumnId = activeType === 'task' ? active.data.current?.columnId : 'board';
+      const sourceIndex = activeType === 'task'
+        ? board.columns[sourceColumnId].taskIds.indexOf(active.id as string)
+        : board.columnOrder.indexOf(active.id as string);
+      
+      // Get destination information
+      let destinationColumnId;
+      let destinationIndex;
+      
+      if (overType === 'task') {
+        // Dropping on another task
+        destinationColumnId = over.data.current?.columnId;
+        destinationIndex = board.columns[destinationColumnId].taskIds.indexOf(over.id as string);
+      } else {
+        // Dropping directly on a column
+        destinationColumnId = over.id as string;
+        destinationIndex = board.columns[destinationColumnId]?.taskIds?.length || 0;
+      }
+      
+      console.log('Moving from', sourceColumnId, 'to', destinationColumnId);
+      
       await handleDragEndFirebase({
         draggableId: active.id,
-        type: active.data.current?.type,
+        type: activeType,
         source: {
-          droppableId: active.data.current?.type === 'task' 
-            ? active.data.current?.columnId 
-            : 'board',
-          index: active.data.current?.type === 'task'
-            ? board.columns[active.data.current?.columnId].taskIds.indexOf(active.id as string)
-            : board.columnOrder.indexOf(active.id as string),
+          droppableId: sourceColumnId,
+          index: sourceIndex,
         },
         destination: {
-          droppableId: over.data.current?.type === 'task'
-            ? over.data.current?.columnId
-            : over.id,
-          index: over.data.current?.type === 'task'
-            ? board.columns[over.data.current?.columnId].taskIds.indexOf(over.id as string)
-            : board.columnOrder.indexOf(over.id as string),
+          droppableId: destinationColumnId,
+          index: destinationIndex,
         },
       });
     }
@@ -150,6 +169,11 @@ const Board = () => {
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
       >
         <div className="flex space-x-4 overflow-x-auto pb-6 custom-scrollbar">
           <SortableContext items={board.columnOrder || []} strategy={horizontalListSortingStrategy}>

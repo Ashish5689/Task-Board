@@ -26,6 +26,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
     setNodeRef,
     transform,
     transition,
+    isDragging,
   } = useSortable({
     id: column.id,
     data: {
@@ -37,6 +38,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    zIndex: isDragging ? 10 : 1,
   };
   
   const handleSaveTitle = async () => {
@@ -135,33 +137,50 @@ const Column = ({ column, tasks }: ColumnProps) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="column bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 min-w-[280px] max-w-[280px] flex flex-col h-[calc(100vh-160px)] transition-colors duration-200"
+      className={`bg-white dark:bg-gray-800 rounded-lg ${isDragging 
+        ? 'shadow-xl ring-2 ring-primary-200 dark:ring-primary-900 opacity-90' 
+        : 'shadow-md dark:shadow-md-dark'} 
+        p-4 min-w-[300px] max-w-[300px] flex flex-col h-[calc(100vh-160px)] transition-all duration-200`}
+      {...attributes}
+      {...listeners}
+      data-dragging={isDragging ? 'true' : 'false'}
+      aria-roledescription="Draggable column"
+      aria-label={`Column: ${column.title}`}
     >
       <div 
-        className="column-header flex items-center justify-between p-2 rounded-t-lg mb-2 cursor-grab bg-gray-50 dark:bg-gray-700" 
-        {...attributes} 
-        {...listeners}
+        className="column-header p-2 rounded-t-lg mb-2 bg-gray-50 dark:bg-gray-700 overflow-visible"
       >
         {isEditing ? (
-          <div className="flex items-center w-full">
+          <div className="flex flex-col w-full gap-2">
             <input
               type="text"
-              className="flex-1 p-2 border dark:border-gray-600 rounded mr-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
+              className="w-full p-2 border dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              onBlur={handleSaveTitle}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveTitle();
                 if (e.key === 'Escape') handleCancelTitleEdit();
               }}
             />
-            <button
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-200"
-              onClick={handleCancelTitleEdit}
-            >
-              Cancel
-            </button>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-2 py-1 text-sm font-medium bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                onClick={handleCancelTitleEdit}
+                type="button"
+                aria-label="Cancel editing"
+              >
+                Cancel
+              </button>
+              <button
+                className="px-2 py-1 text-sm font-medium bg-primary-600 dark:bg-primary-700 rounded-md text-white hover:bg-primary-700 dark:hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                onClick={handleSaveTitle}
+                type="button"
+                aria-label="Save changes"
+              >
+                Save
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -197,7 +216,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
       </div>
       
       <div className="flex-1 overflow-y-auto custom-scrollbar mb-2">
-        <TaskList id={column.id} tasks={tasks} />
+        <TaskList columnId={column.id} tasks={tasks} />
       </div>
       
       {isAddingTask ? (
