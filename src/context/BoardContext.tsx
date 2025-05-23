@@ -149,7 +149,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     if (type === 'column') {
       if (!board) return;
       
-      const newColumnOrder = Array.from(board.columnOrder);
+      // Ensure columnOrder is an array before using Array.from
+      const columnOrder = Array.isArray(board.columnOrder) ? board.columnOrder : [];
+      const newColumnOrder = [...columnOrder];
       newColumnOrder.splice(source.index, 1);
       newColumnOrder.splice(destination.index, 0, draggableId);
 
@@ -168,9 +170,19 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     const sourceColumn = board.columns[source.droppableId];
     const destinationColumn = board.columns[destination.droppableId];
 
+    if (!sourceColumn || !destinationColumn) {
+      console.error('Source or destination column not found', {
+        sourceId: source.droppableId,
+        destinationId: destination.droppableId
+      });
+      return;
+    }
+
     // Reordering within the same column
     if (sourceColumn.id === destinationColumn.id) {
-      const newTaskIds = Array.from(sourceColumn.taskIds);
+      // Ensure taskIds is an array before using it
+      const taskIds = Array.isArray(sourceColumn.taskIds) ? sourceColumn.taskIds : [];
+      const newTaskIds = [...taskIds];
       newTaskIds.splice(source.index, 1);
       newTaskIds.splice(destination.index, 0, draggableId);
 
@@ -184,11 +196,18 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     }
 
     // Moving task from one column to another
-    const sourceTaskIds = Array.from(sourceColumn.taskIds);
+    // Ensure taskIds are arrays before using them
+    const sourceTaskIds = Array.isArray(sourceColumn.taskIds) ? [...sourceColumn.taskIds] : [];
     sourceTaskIds.splice(source.index, 1);
     
-    const destinationTaskIds = Array.from(destinationColumn.taskIds);
+    const destinationTaskIds = Array.isArray(destinationColumn.taskIds) ? [...destinationColumn.taskIds] : [];
     destinationTaskIds.splice(destination.index, 0, draggableId);
+
+    console.log('Moving task between columns:', {
+      task: draggableId,
+      from: { column: sourceColumn.id, taskIds: sourceTaskIds },
+      to: { column: destinationColumn.id, taskIds: destinationTaskIds }
+    });
 
     try {
       await moveTask(

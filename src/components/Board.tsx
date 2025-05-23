@@ -91,6 +91,13 @@ const Board = () => {
     const { active } = event;
     setActiveId(active.id as string);
     setActiveType(active.data.current?.type || null);
+    
+    // Log the active item data for debugging
+    console.log('Drag start:', {
+      id: active.id,
+      type: active.data.current?.type,
+      columnId: active.data.current?.columnId
+    });
   };
   
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -99,47 +106,178 @@ const Board = () => {
     
     const { active, over } = event;
     
-    if (!over) return;
+    if (!over || !board) return;
     
     if (active.id !== over.id) {
-      // Determine the correct source and destination
-      const activeType = active.data.current?.type;
-      const overType = over.data.current?.type;
-      
-      // Get source information
-      const sourceColumnId = activeType === 'task' ? active.data.current?.columnId : 'board';
-      const sourceIndex = activeType === 'task'
-        ? board.columns[sourceColumnId].taskIds.indexOf(active.id as string)
-        : board.columnOrder.indexOf(active.id as string);
-      
-      // Get destination information
-      let destinationColumnId;
-      let destinationIndex;
-      
-      if (overType === 'task') {
-        // Dropping on another task
-        destinationColumnId = over.data.current?.columnId;
-        destinationIndex = board.columns[destinationColumnId].taskIds.indexOf(over.id as string);
-      } else {
-        // Dropping directly on a column
-        destinationColumnId = over.id as string;
-        destinationIndex = board.columns[destinationColumnId]?.taskIds?.length || 0;
+      try {
+        // Get the type and data from the dragged item
+        const activeType = active.data.current?.type;
+        const activeData = active.data.current;
+        
+        console.log('Drag end event:', { 
+          activeId: active.id, 
+          activeType, 
+          activeData,
+          overId: over.id, 
+          overType: over.data.current?.type,
+          overData: over.data.current
+        });
+        
+        // Handle column reordering
+        if (activeType === 'column') {
+          // Ensure columnOrder is an array
+          const columnOrder = Array.isArray(board.columnOrder) ? board.columnOrder : [];
+          const oldIndex = columnOrder.indexOf(active.id as string);
+          const newIndex = columnOrder.indexOf(over.id as string);
+          
+          if (oldIndex !== -1 && newIndex !== -1) {
+            await handleDragEndFirebase({
+              draggableId: active.id as string,
+              type: 'column',
+              source: {
+                droppableId: 'board',
+                index: oldIndex,
+              },
+              destination: {
+                droppableId: 'board',
+                index: newIndex,
+              },
+            });
+          }
+          return;
+        }
+        
+        // Handle task movement
+        if (activeType === 'task') {
+          // Try multiple ways to get the source column ID
+          let sourceColumnId = activeData?.columnId || activeData?.sourceId;
+          
+          // If still not found, try data attributes
+          if (!sourceColumnId && active.data.current?.task?.id) {
+            // Look for the task in all columns
+            // Ensure columnOrder is an array
+            const columnOrder = Array.isArray(board.columnOrder) ? board.columnOrder : [];
+            for (const columnId of columnOrder) {
+              const column = board.columns[columnId];
+              if (!column) continue;
+              
+              // Ensure taskIds is an array
+              const taskIds = Array.isArray(column.taskIds) ? column.taskIds : [];
+              if (taskIds.includes(active.id as string)) {
+                sourceColumnId = columnId;
+                break;
+              }
+            }
+          }
+          
+          if (!sourceColumnId) {
+            console.error('Source column ID not found in drag data', { active, activeData });
+            return;
+          }
+          
+          // Find source index
+          const sourceColumn = board.columns[sourceColumnId];
+          if (!sourceColumn) {
+            console.error('Source column not found in board data', sourceColumnId);
+            return;
+          }
+          
+          // Ensure taskIds is an array
+          const sourceTaskIds = Array.isArray(sourceColumn.taskIds) ? sourceColumn.taskIds : [];
+          const sourceIndex = sourceTaskIds.indexOf(active.id as string);
+          if (sourceIndex === -1) {
+            console.error('Task not found in source column', active.id, sourceColumnId);
+            return;
+          }
+          
+          // Determine destination
+          let destinationColumnId;
+          let destinationIndex;
+          
+          // If dropping on a task, use its column
+          if (over.data.current?.type === 'task') {
+            // Try multiple ways to get the destination column ID
+            destinationColumnId = over.data.current?.columnId || over.data.current?.sourceId;
+            
+            if (!destinationColumnId) {
+              // Fallback: search through columns
+              // Ensure columnOrder is an array
+              const columnOrder = Array.isArray(board.columnOrder) ? board.columnOrder : [];
+              for (const columnId of columnOrder) {
+                const column = board.columns[columnId];
+                if (!column) continue;
+                
+                // Ensure taskIds is an array
+                const taskIds = Array.isArray(column.taskIds) ? column.taskIds : [];
+                const taskIndex = taskIds.indexOf(over.id as string);
+                if (taskIndex !== -1) {
+                  destinationColumnId = columnId;
+                  destinationIndex = taskIndex;
+                  break;
+                }
+              }
+            } else {
+              // Get the destination index
+              const destinationColumn = board.columns[destinationColumnId];
+              if (destinationColumn) {
+                // Ensure taskIds is an array
+                const taskIds = Array.isArray(destinationColumn.taskIds) ? destinationColumn.taskIds : [];
+                destinationIndex = taskIds.indexOf(over.id as string);
+              }
+            }
+          } else {
+            // Dropping directly on a column
+            destinationColumnId = over.id as string;
+            const column = board.columns[destinationColumnId];
+            if (column) {
+              // Ensure taskIds is an array
+              const taskIds = Array.isArray(column.taskIds) ? column.taskIds : [];
+              destinationIndex = taskIds.length;
+            }
+          }
+          
+          if (!destinationColumnId) {
+            console.error('Could not determine destination column', { 
+              taskId: active.id,
+              over
+            });
+            return;
+          }
+          
+          // If destination index is still not determined, set it to the end of the column
+          if (destinationIndex === undefined || destinationIndex === -1) {
+            const destinationColumn = board.columns[destinationColumnId];
+            if (destinationColumn) {
+              // Ensure taskIds is an array
+              const taskIds = Array.isArray(destinationColumn.taskIds) ? destinationColumn.taskIds : [];
+              destinationIndex = taskIds.length;
+            } else {
+              destinationIndex = 0; // Default to beginning if column has no tasks
+            }
+          }
+          
+          console.log('Moving task:', {
+            taskId: active.id,
+            from: { columnId: sourceColumnId, index: sourceIndex },
+            to: { columnId: destinationColumnId, index: destinationIndex }
+          });
+          
+          await handleDragEndFirebase({
+            draggableId: active.id as string,
+            type: 'task',
+            source: {
+              droppableId: sourceColumnId,
+              index: sourceIndex,
+            },
+            destination: {
+              droppableId: destinationColumnId,
+              index: destinationIndex,
+            },
+          });
+        }
+      } catch (error) {
+        console.error('Error in drag and drop operation:', error);
       }
-      
-      console.log('Moving from', sourceColumnId, 'to', destinationColumnId);
-      
-      await handleDragEndFirebase({
-        draggableId: active.id,
-        type: activeType,
-        source: {
-          droppableId: sourceColumnId,
-          index: sourceIndex,
-        },
-        destination: {
-          droppableId: destinationColumnId,
-          index: destinationIndex,
-        },
-      });
     }
   };
   
