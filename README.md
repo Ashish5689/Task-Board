@@ -32,8 +32,6 @@ A modern, real-time collaborative task board application inspired by Trello, bui
 ## ✨ Features
 
 ### 🎯 Core Functionality
-
-### 🎯 Core Functionality
 - Create, edit, and delete columns (e.g., "To Do", "In Progress", "Done")
 - Create, edit, and delete tasks with titles and descriptions
 - Drag and drop tasks between columns
@@ -190,80 +188,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  Made with ❤️ by [Your Name] | 
+  Made with ❤️ by [Ashish Jha](https://github.com/Ashish5689) | 
   <a href="https://task-board-gules-phi.vercel.app/">Live Demo</a> | 
   <a href="https://github.com/Ashish5689/task-board/issues">Report Bug</a> | 
   <a href="https://github.com/Ashish5689/task-board/pulls">Request Feature</a>
 </div>
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- npm or yarn
-- Firebase account
-
-### Installation Steps
-
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd task-board
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create a Firebase project:
-   - Go to the [Firebase Console](https://console.firebase.google.com/)
-   - Create a new project
-   - Set up a Realtime Database
-   - Set up authentication (if needed)
-   - Get your Firebase configuration
-
-4. Configure environment variables:
-   - Create a `.env` file in the project root
-   - Add your Firebase configuration:
-   ```
-   VITE_FIREBASE_API_KEY=your-api-key
-   VITE_FIREBASE_AUTH_DOMAIN=your-project-id.firebaseapp.com
-   VITE_FIREBASE_DATABASE_URL=https://your-project-id-default-rtdb.firebaseio.com
-   VITE_FIREBASE_PROJECT_ID=your-project-id
-   VITE_FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-   VITE_FIREBASE_APP_ID=your-app-id
-   ```
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-## Architecture and Data Flow
-
-### Data Models
-
-- **Column**: `{ id: string, title: string, taskIds: string[] }`
-- **Task**: `{ id: string, title: string, description?: string, createdAt: string, updatedAt: string }`
-- **Presence**: `{ userId: string, online: boolean, lastActive: string }`
-
-### Real-time Synchronization
-
-The application uses Firebase Realtime Database to synchronize data across clients:
-
-1. When a user makes a change (create/edit/delete/move), the change is sent to Firebase
-2. Firebase updates the database and notifies all connected clients
-3. All clients receive the update and update their UI accordingly
-
-### Optimistic Updates
-
-The application implements optimistic updates to provide a smooth user experience:
-
-1. When a user makes a change, the UI is updated immediately
-2. The change is sent to Firebase in the background
-3. If the operation fails, the UI is rolled back to the previous state
-
-## License
-
-MIT
