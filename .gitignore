@@ -16,6 +16,9 @@ dist-ssr
 .env
 .env.*
 
+# Memory bank
+memorybank.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
