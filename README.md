@@ -1,16 +1,49 @@
 # Real-Time Collaborative Task Board
 
-A real-time collaborative task board application similar to Trello, built with React, TypeScript, and Firebase Realtime Database. This application allows multiple users to create, edit, delete, and reorder tasks and columns in real-time.
+A real-time collaborative task board application similar to Trello, built with React, TypeScript, and Firebase. This application allows multiple users to create, edit, delete, and reorder tasks and columns in real-time, with advanced task management and collaboration features.
 
 ## Features
 
+### Core Functionality
 - Create, edit, and delete columns (e.g., "To Do", "In Progress", "Done")
 - Create, edit, and delete tasks with titles and descriptions
 - Drag and drop tasks between columns
 - Reorder tasks within columns
 - Real-time synchronization across all connected clients
+
+### User Authentication & Profiles
+- User authentication with email/password and Google sign-in
+- User profiles with customizable display names and avatars
+- Protected routes for authenticated users
 - User presence detection showing the number of online users
-- Optimistic UI updates for a smooth user experience
+
+### Task Ownership & Tracking
+- Track task creation and modification by users
+- Display user information on tasks they've created or modified
+
+### Enhanced Task Management (Coming Soon)
+- Due dates and priority levels for tasks
+- Task labels/tags with color coding
+- File attachments to tasks (images, documents)
+- Task checklists for subtasks
+
+### Collaboration Features (Coming Soon)
+- Comments on tasks for team discussions
+- Task assignment to specific users
+- @mentions in comments
+- Activity history for each task
+
+### Workspace Organization (Coming Soon)
+- Multiple boards for different projects
+- Board templates for quick setup
+- Board sharing with specific permissions
+- Archived/completed tasks section
+
+### Visual Enhancements (Coming Soon)
+- Custom background options for boards
+- Card cover images
+- Compact/expanded view options
+- Progress bars for columns or projects
 
 ## Tech Stack
 

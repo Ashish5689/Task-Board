@@ -1,4 +1,4 @@
-import type { Board, Column, Task, UserPresence, User } from '../types';
+import type { Board, Column, Task, UserPresence, User, TaskPriority, TaskLabel } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ref, set, onValue, update, remove, onDisconnect, get } from 'firebase/database';
 import { db } from './config';
@@ -144,21 +144,31 @@ export const getUser = async (uid: string): Promise<User | null> => {
 };
 
 // Task operations
-export const addNewTask = async (columnId: string, title: string, description?: string, userId?: string) => {
+export const addNewTask = async (columnId: string, taskData: { title: string; description?: string; dueDate?: string; priority?: TaskPriority }, userId?: string) => {
   const taskId = uuidv4();
   const now = new Date().toISOString();
   
   // Create the task object - Firebase doesn't allow undefined values
   const newTask: Task = {
     id: taskId,
-    title,
+    title: taskData.title,
     createdAt: now,
     updatedAt: now,
   };
   
   // Only add description if it has a value (not undefined or empty string)
-  if (description && description.trim() !== '') {
-    newTask.description = description;
+  if (taskData.description && taskData.description.trim() !== '') {
+    newTask.description = taskData.description;
+  }
+  
+  // Add due date if provided
+  if (taskData.dueDate) {
+    newTask.dueDate = taskData.dueDate;
+  }
+  
+  // Add priority if provided
+  if (taskData.priority) {
+    newTask.priority = taskData.priority;
   }
 
   // Add user information if available
@@ -299,6 +309,86 @@ export const moveTask = async (
     await update(ref(db, `board/columns/${destinationColumnId}`), { taskIds: safeDestinationTaskIds });
   } catch (error) {
     console.error('Error moving task:', error);
+    throw error;
+  }
+};
+
+// Label operations
+export const getLabels = async (): Promise<TaskLabel[]> => {
+  try {
+    const labelsRef = ref(db, 'labels');
+    const snapshot = await get(labelsRef);
+    
+    if (snapshot.exists()) {
+      const labelsData = snapshot.val();
+      return Object.values(labelsData) as TaskLabel[];
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error getting labels:', error);
+    return [];
+  }
+};
+
+export const createLabel = async (label: TaskLabel, userId?: string) => {
+  try {
+    const labelRef = ref(db, `labels/${label.id}`);
+    await set(labelRef, {
+      ...label,
+      createdBy: userId || null,
+      createdAt: new Date().toISOString(),
+    });
+    return label.id;
+  } catch (error) {
+    console.error('Error creating label:', error);
+    throw error;
+  }
+};
+
+export const updateLabel = async (labelId: string, updates: Partial<TaskLabel>) => {
+  try {
+    const labelRef = ref(db, `labels/${labelId}`);
+    await update(labelRef, {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error updating label:', error);
+    throw error;
+  }
+};
+
+export const deleteLabel = async (labelId: string) => {
+  try {
+    // First, remove the label from all tasks that use it
+    const tasksRef = ref(db, 'board/tasks');
+    const tasksSnapshot = await get(tasksRef);
+    
+    if (tasksSnapshot.exists()) {
+      const tasks = tasksSnapshot.val();
+      const updatePromises = [];
+      
+      for (const taskId in tasks) {
+        const task = tasks[taskId];
+        if (task.labels && task.labels.includes(labelId)) {
+          const updatedLabels = task.labels.filter((id: string) => id !== labelId);
+          const taskRef = ref(db, `board/tasks/${taskId}`);
+          updatePromises.push(update(taskRef, { labels: updatedLabels }));
+        }
+      }
+      
+      // Wait for all task updates to complete
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+      }
+    }
+    
+    // Then delete the label itself
+    const labelRef = ref(db, `labels/${labelId}`);
+    await remove(labelRef);
+  } catch (error) {
+    console.error('Error deleting label:', error);
     throw error;
   }
 };

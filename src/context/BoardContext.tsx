@@ -1,19 +1,26 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-// import { v4 as uuidv4 } from 'uuid';
-import type { Board, Task } from '../types';
-import { 
-  getBoardData, 
-  addColumn as dbAddColumn, 
-  updateColumnTitle as dbUpdateColumnTitle, 
-  removeColumn as dbRemoveColumn, 
-  addNewTask as dbAddNewTask, 
-  updateTaskDetails as dbUpdateTaskDetails, 
-  removeTask as dbRemoveTask, 
-  reorderTasks, 
+import type { Board, Task, TaskPriority } from '../types';
+import {
+  getBoardData,
+  addColumn as dbAddColumn,
+  updateColumnTitle as dbUpdateColumnTitle,
+  removeColumn as dbRemoveColumn,
+  addNewTask as dbAddNewTask,
+  updateTaskDetails as dbUpdateTaskDetails,
+  removeTask as dbRemoveTask,
+  reorderTasks,
+  reorderColumns,
   moveTask,
-  reorderColumns
 } from '../firebase/db';
+
+// Define a type for the task data when creating a new task
+interface NewTaskData {
+  title: string;
+  description?: string;
+  dueDate?: string;
+  priority?: TaskPriority;
+}
 
 interface BoardContextProps {
   board: Board | null;
@@ -22,7 +29,7 @@ interface BoardContextProps {
   addNewColumn: (title: string) => Promise<string>;
   updateColumnTitle: (columnId: string, title: string) => Promise<void>;
   removeColumn: (columnId: string) => Promise<void>;
-  addNewTask: (columnId: string, title: string, description?: string, userId?: string) => Promise<string>;
+  addNewTask: (columnId: string, taskData: NewTaskData, userId?: string) => Promise<string>;
   updateTaskDetails: (taskId: string, updates: Partial<Task>, userId?: string) => Promise<void>;
   removeTask: (taskId: string, columnId: string) => Promise<void>;
   handleDragEnd: (result: any) => Promise<void>;
@@ -76,21 +83,21 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
 
   const addNewColumn = async (title: string) => {
     try {
-      return await dbAddColumn(title);
-    } catch (err) {
+      const columnId = await dbAddColumn(title);
+      return columnId;
+    } catch (error) {
       setError('Failed to add column');
-      console.error('Error adding column:', err);
-      throw err;
+      console.error('Error adding column:', error);
+      throw error;
     }
   };
 
   const updateColumnTitle = async (columnId: string, title: string) => {
     try {
-      // Call the imported function from db.ts with its renamed import
       await dbUpdateColumnTitle(columnId, title);
     } catch (err) {
       setError('Failed to update column');
-      console.error('Error updating column:', err);
+      console.error('Error updating column title:', err);
       throw err;
     }
   };
@@ -105,9 +112,9 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     }
   };
 
-  const addNewTask = async (columnId: string, title: string, description?: string, userId?: string) => {
+  const addNewTask = async (columnId: string, taskData: { title: string; description?: string; dueDate?: string; priority?: TaskPriority; }, userId?: string) => {
     try {
-      const taskId = await dbAddNewTask(columnId, title, description, userId);
+      const taskId = await dbAddNewTask(columnId, taskData, userId);
       return taskId;
     } catch (error) {
       console.error('Error adding new task:', error);

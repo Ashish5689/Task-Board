@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Column as ColumnType, Task } from '../types';
+import type { Column as ColumnType, Task, TaskPriority } from '../types';
 import { useBoardContext } from '../context/BoardContext';
 import { useAuth } from '../context/AuthContext';
 import TaskList from './TaskList.tsx';
+import LabelManager from './labels/LabelManager';
 
 interface ColumnProps {
   column: ColumnType;
@@ -18,6 +19,9 @@ const Column = ({ column, tasks }: ColumnProps) => {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<string | undefined>(undefined);
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority | undefined>(undefined);
+  const [newTaskLabels, setNewTaskLabels] = useState<string[]>([]);
   
   const { updateColumnTitle, removeColumn, addNewTask } = useBoardContext();
   const { authState } = useAuth();
@@ -112,21 +116,36 @@ const Column = ({ column, tasks }: ColumnProps) => {
   const handleCancelAddTask = () => {
     setNewTaskTitle('');
     setNewTaskDescription('');
+    setNewTaskDueDate(undefined);
+    setNewTaskPriority(undefined);
+    setNewTaskLabels([]);
     setIsAddingTask(false);
   };
   
   const handleAddTask = async () => {
     if (newTaskTitle.trim() === '') return;
     
+    // Create the task object with the new fields
+    const taskData = {
+      title: newTaskTitle,
+      description: newTaskDescription.trim() === '' ? undefined : newTaskDescription,
+      dueDate: newTaskDueDate,
+      priority: newTaskPriority,
+      labels: newTaskLabels.length > 0 ? newTaskLabels : undefined,
+    };
+    
     await addNewTask(
       column.id,
-      newTaskTitle,
-      newTaskDescription.trim() === '' ? undefined : newTaskDescription,
+      taskData,
       authState.user?.uid // Pass the user ID
     );
     
+    // Reset all fields
     setNewTaskTitle('');
     setNewTaskDescription('');
+    setNewTaskDueDate(undefined);
+    setNewTaskPriority(undefined);
+    setNewTaskLabels([]);
     setIsAddingTask(false);
   };
   
@@ -227,38 +246,70 @@ const Column = ({ column, tasks }: ColumnProps) => {
           className="mt-auto p-3 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-sm transition-colors duration-200" 
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Use a div instead of a form to prevent implicit submissions */}
-          <div>
+          <div className="p-3 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-lg border-l-4 border-primary-500 dark:border-primary-600 transition-colors duration-200 z-20 relative">
             <input
               type="text"
-              className="w-full p-2 mb-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
-              placeholder="Task title"
+              className="w-full p-2 mb-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               value={newTaskTitle}
               onChange={handleTaskTitleChange}
-              onKeyDown={handleTitleKeyDown}
+              placeholder="Enter task title..."
               autoFocus
+              onKeyDown={handleTitleKeyDown}
             />
             <textarea
               id="task-description"
-              className="w-full p-2 mb-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
-              placeholder="Description (optional)"
+              className="w-full p-2 mb-3 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
               value={newTaskDescription}
               onChange={handleTaskDescriptionChange}
+              placeholder="Add a description..."
+              rows={3}
               onKeyDown={handleDescriptionKeyDown}
-              rows={2}
             />
+            
+            {/* Due Date Picker */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+              <input
+                type="date"
+                className="w-full p-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
+                value={newTaskDueDate ? new Date(newTaskDueDate).toISOString().split('T')[0] : ''}
+                onChange={(e) => setNewTaskDueDate(e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+              />
+            </div>
+            
+            {/* Priority Selector */}
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+              <select
+                className="w-full p-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
+                value={newTaskPriority || ''}
+                onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority || undefined)}
+              >
+                <option value="">None</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            
+            {/* Label Manager */}
+            <LabelManager selectedLabels={newTaskLabels} onLabelsChange={setNewTaskLabels} />
+            
             <div className="flex justify-end space-x-2">
               <button
-                type="button"
                 className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
                 onClick={handleCancelAddTask}
+                type="button"
+                aria-label="Cancel adding task"
               >
                 Cancel
               </button>
               <button
-                type="button"
                 className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-700 dark:hover:bg-primary-800 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
                 onClick={handleAddTask}
+                type="button"
+                aria-label="Add task"
               >
                 Add Task
               </button>

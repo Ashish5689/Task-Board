@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import type { Task, User } from '../types';
+import type { Task, User, TaskPriority } from '../types';
 import { useBoardContext } from '../context/BoardContext';
 import { useAuth } from '../context/AuthContext';
 import { getUser } from '../firebase/db';
+import LabelManager from './labels/LabelManager';
+import TaskLabels from './labels/TaskLabels';
 
 interface TaskCardProps {
   task: Task;
@@ -15,6 +17,9 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [dueDate, setDueDate] = useState<string | undefined>(task.dueDate);
+  const [priority, setPriority] = useState<TaskPriority | undefined>(task.priority);
+  const [labels, setLabels] = useState<string[]>(task.labels || []);
   const [creator, setCreator] = useState<User | null>(null);
   const [lastModifier, setLastModifier] = useState<User | null>(null);
   
@@ -44,6 +49,9 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
     await updateTaskDetails(task.id, {
       title,
       description: description.trim() === '' ? undefined : description,
+      dueDate,
+      priority,
+      labels,
     }, authState.user?.uid);
     
     setIsEditing(false);
@@ -52,6 +60,9 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
   const handleCancel = () => {
     setTitle(task.title);
     setDescription(task.description || '');
+    setDueDate(task.dueDate);
+    setPriority(task.priority);
+    setLabels(task.labels || []);
     setIsEditing(false);
   };
   
@@ -67,6 +78,31 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+  
+  const formatDueDate = (dateString?: string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+  
+  const getPriorityColor = (priority?: TaskPriority) => {
+    switch (priority) {
+      case 'low':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+      case 'urgent':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    }
   };
   
   if (isEditing) {
@@ -86,6 +122,36 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
           placeholder="Add a description..."
           rows={3}
         />
+        
+        {/* Due Date Picker */}
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
+          <input
+            type="date"
+            className="w-full p-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
+            value={dueDate ? new Date(dueDate).toISOString().split('T')[0] : ''}
+            onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value).toISOString() : undefined)}
+          />
+        </div>
+        
+        {/* Priority Selector */}
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+          <select
+            className="w-full p-2 border dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200"
+            value={priority || ''}
+            onChange={(e) => setPriority(e.target.value as TaskPriority || undefined)}
+          >
+            <option value="">None</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        
+        {/* Label Manager */}
+        <LabelManager selectedLabels={labels} onLabelsChange={setLabels} />
         <div className="flex justify-between items-center">
           <button
             className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-white dark:bg-gray-800 border border-red-300 dark:border-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200"
@@ -132,6 +198,11 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
           {task.description && (
             <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-line">{task.description}</div>
           )}
+          
+          {/* Display labels */}
+          {task.labels && task.labels.length > 0 && (
+            <TaskLabels labelIds={task.labels} maxDisplay={3} size="sm" />
+          )}
         </div>
         {isDragging && (
           <div className="ml-2 text-secondary-500 dark:text-secondary-400">
@@ -142,6 +213,23 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
         )}
       </div>
       <div className="flex flex-col space-y-2 mt-2">
+        {/* Priority and Due Date */}
+        <div className="flex flex-wrap gap-2 text-xs mb-2">
+          {task.priority && (
+            <div className={`px-2 py-1 rounded-full font-medium ${getPriorityColor(task.priority)}`}>
+              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+            </div>
+          )}
+          {task.dueDate && (
+            <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-600 dark:text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+              </svg>
+              <span className="text-gray-700 dark:text-gray-300">Due: {formatDueDate(task.dueDate)}</span>
+            </div>
+          )}
+        </div>
+        
         {/* User information */}
         {(creator || lastModifier) && (
           <div className="flex flex-wrap gap-2 text-xs">
