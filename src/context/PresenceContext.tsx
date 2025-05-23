@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import type { UserPresence } from '../types';
 import { setupPresence, getOnlineUsers } from '../firebase/db';
+import { useAuth } from './AuthContext';
 
 interface PresenceContextProps {
   onlineUsers: UserPresence[];
@@ -26,15 +27,26 @@ interface PresenceProviderProps {
 export const PresenceProvider = ({ children }: PresenceProviderProps) => {
   const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const { authState } = useAuth();
+  const { user } = authState;
 
   useEffect(() => {
-    // Generate a unique ID for this user session
-    const userId = localStorage.getItem('userId') || uuidv4();
-    localStorage.setItem('userId', userId);
+    // Use authenticated user ID if available, otherwise generate a unique ID
+    const userId = user?.uid || localStorage.getItem('userId') || uuidv4();
+    
+    // Only store in localStorage if not authenticated
+    if (!user?.uid) {
+      localStorage.setItem('userId', userId);
+    }
+    
     setCurrentUserId(userId);
 
-    // Set up presence monitoring
-    const cleanupPresence = setupPresence(userId);
+    // Set up presence monitoring with user profile info if available
+    const cleanupPresence = setupPresence(
+      userId,
+      user?.displayName,
+      user?.photoURL
+    );
 
     // Get online users
     getOnlineUsers((users) => {
@@ -44,7 +56,7 @@ export const PresenceProvider = ({ children }: PresenceProviderProps) => {
     return () => {
       cleanupPresence();
     };
-  }, []);
+  }, [user]);
 
   const value = {
     onlineUsers,

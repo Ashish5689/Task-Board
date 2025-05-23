@@ -1,9 +1,14 @@
 import './App.css'
 import './index.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { BoardProvider } from './context/BoardContext'
 import { PresenceProvider } from './context/PresenceContext'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
 import Board from './components/Board'
+import { AuthPage } from './pages/AuthPage'
+import { UserProfile } from './components/auth/UserProfile'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 // Import icons directly to avoid module resolution issues
 const SunIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -31,18 +36,49 @@ const AppContent = () => {
             Task Board
           </h1>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
+            <Routes>
+              <Route path="/" element={
+                <div className="flex items-center space-x-4">
+                  <UserProfileButton />
+                  <button
+                    onClick={toggleTheme}
+                    className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  >
+                    {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                  </button>
+                </div>
+              } />
+              <Route path="*" element={
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                >
+                  {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                </button>
+              } />
+            </Routes>
           </div>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Board />
+        <Routes>
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Board />
+            </ProtectedRoute>
+          } />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <div className="flex justify-center">
+                <UserProfile />
+              </div>
+            </ProtectedRoute>
+          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
       <footer className="bg-white dark:bg-gray-800 shadow-inner mt-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -53,15 +89,34 @@ const AppContent = () => {
   );
 };
 
+// User profile button component
+const UserProfileButton = () => {
+  return (
+    <a
+      href="/profile"
+      className="flex items-center px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors duration-200"
+    >
+      <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+      </svg>
+      Profile
+    </a>
+  );
+};
+
 function App() {
   return (
-    <ThemeProvider>
-      <PresenceProvider>
-        <BoardProvider>
-          <AppContent />
-        </BoardProvider>
-      </PresenceProvider>
-    </ThemeProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ThemeProvider>
+          <PresenceProvider>
+            <BoardProvider>
+              <AppContent />
+            </BoardProvider>
+          </PresenceProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

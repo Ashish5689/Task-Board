@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import type { Task } from '../types';
+import { useState, useEffect } from 'react';
+import type { Task, User } from '../types';
 import { useBoardContext } from '../context/BoardContext';
+import { useAuth } from '../context/AuthContext';
+import { getUser } from '../firebase/db';
 
 interface TaskCardProps {
   task: Task;
@@ -13,8 +15,28 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [creator, setCreator] = useState<User | null>(null);
+  const [lastModifier, setLastModifier] = useState<User | null>(null);
   
   const { updateTaskDetails, removeTask } = useBoardContext();
+  const { authState } = useAuth();
+  
+  // Fetch user information for created by and last modified by
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (task.createdBy) {
+        const userData = await getUser(task.createdBy);
+        setCreator(userData);
+      }
+      
+      if (task.lastModifiedBy && task.lastModifiedBy !== task.createdBy) {
+        const userData = await getUser(task.lastModifiedBy);
+        setLastModifier(userData);
+      }
+    };
+    
+    fetchUserData();
+  }, [task.createdBy, task.lastModifiedBy]);
   
   const handleSave = async () => {
     if (title.trim() === '') return;
@@ -22,7 +44,7 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
     await updateTaskDetails(task.id, {
       title,
       description: description.trim() === '' ? undefined : description,
-    });
+    }, authState.user?.uid);
     
     setIsEditing(false);
   };
@@ -119,22 +141,69 @@ const TaskCard = ({ task, columnId, isDragging }: TaskCardProps) => {
           </div>
         )}
       </div>
-      <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500 mt-2">
-        <span className="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-          </svg>
-          {formatDate(task.updatedAt)}
-        </span>
-        <button
-          className="p-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete();
-          }}
-        >
-          Delete
-        </button>
+      <div className="flex flex-col space-y-2 mt-2">
+        {/* User information */}
+        {(creator || lastModifier) && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {creator && (
+              <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-1">
+                <span className="text-gray-600 dark:text-gray-300 mr-1">Created by:</span>
+                <div className="flex items-center">
+                  {creator.photoURL ? (
+                    <img 
+                      src={creator.photoURL} 
+                      alt={creator.displayName} 
+                      className="w-4 h-4 rounded-full mr-1"
+                    />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-indigo-500 mr-1 flex items-center justify-center text-[8px] text-white">
+                      {creator.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span className="text-gray-700 dark:text-gray-200">{creator.displayName}</span>
+                </div>
+              </div>
+            )}
+            {lastModifier && lastModifier.uid !== creator?.uid && (
+              <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-1">
+                <span className="text-gray-600 dark:text-gray-300 mr-1">Modified by:</span>
+                <div className="flex items-center">
+                  {lastModifier.photoURL ? (
+                    <img 
+                      src={lastModifier.photoURL} 
+                      alt={lastModifier.displayName} 
+                      className="w-4 h-4 rounded-full mr-1"
+                    />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-indigo-500 mr-1 flex items-center justify-center text-[8px] text-white">
+                      {lastModifier.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <span className="text-gray-700 dark:text-gray-200">{lastModifier.displayName}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Date and delete button */}
+        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500">
+          <span className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            </svg>
+            {formatDate(task.updatedAt)}
+          </span>
+          <button
+            className="p-1 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Column as ColumnType, Task } from '../types';
 import { useBoardContext } from '../context/BoardContext';
+import { useAuth } from '../context/AuthContext';
 import TaskList from './TaskList.tsx';
 
 interface ColumnProps {
@@ -19,6 +20,7 @@ const Column = ({ column, tasks }: ColumnProps) => {
   const [newTaskDescription, setNewTaskDescription] = useState('');
   
   const { updateColumnTitle, removeColumn, addNewTask } = useBoardContext();
+  const { authState } = useAuth();
   
   const {
     attributes,
@@ -119,7 +121,8 @@ const Column = ({ column, tasks }: ColumnProps) => {
     await addNewTask(
       column.id,
       newTaskTitle,
-      newTaskDescription.trim() === '' ? undefined : newTaskDescription
+      newTaskDescription.trim() === '' ? undefined : newTaskDescription,
+      authState.user?.uid // Pass the user ID
     );
     
     setNewTaskTitle('');

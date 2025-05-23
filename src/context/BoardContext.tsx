@@ -22,8 +22,8 @@ interface BoardContextProps {
   addNewColumn: (title: string) => Promise<string>;
   updateColumnTitle: (columnId: string, title: string) => Promise<void>;
   removeColumn: (columnId: string) => Promise<void>;
-  addNewTask: (columnId: string, title: string, description?: string) => Promise<string>;
-  updateTaskDetails: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  addNewTask: (columnId: string, title: string, description?: string, userId?: string) => Promise<string>;
+  updateTaskDetails: (taskId: string, updates: Partial<Task>, userId?: string) => Promise<void>;
   removeTask: (taskId: string, columnId: string) => Promise<void>;
   handleDragEnd: (result: any) => Promise<void>;
 }
@@ -105,23 +105,22 @@ export const BoardProvider = ({ children }: BoardProviderProps) => {
     }
   };
 
-  const addNewTask = async (columnId: string, title: string, description?: string) => {
+  const addNewTask = async (columnId: string, title: string, description?: string, userId?: string) => {
     try {
-      return await dbAddNewTask(columnId, title, description);
-    } catch (err) {
-      setError('Failed to add task');
-      console.error('Error adding task:', err);
-      throw err;
+      const taskId = await dbAddNewTask(columnId, title, description, userId);
+      return taskId;
+    } catch (error) {
+      console.error('Error adding new task:', error);
+      throw error;
     }
   };
 
-  const updateTaskDetails = async (taskId: string, updates: Partial<Task>) => {
+  const updateTaskDetails = async (taskId: string, updates: Partial<Task>, userId?: string) => {
     try {
-      await dbUpdateTaskDetails(taskId, updates);
-    } catch (err) {
-      setError('Failed to update task');
-      console.error('Error updating task:', err);
-      throw err;
+      await dbUpdateTaskDetails(taskId, updates, userId);
+    } catch (error) {
+      console.error('Error updating task details:', error);
+      throw error;
     }
   };
 

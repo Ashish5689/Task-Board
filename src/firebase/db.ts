@@ -1,4 +1,4 @@
-import type { Board, Column, Task, UserPresence } from '../types';
+import type { Board, Column, Task, UserPresence, User } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { ref, set, onValue, update, remove, onDisconnect, get } from 'firebase/database';
 import { db } from './config';
@@ -120,8 +120,31 @@ export const removeColumn = async (columnId: string) => {
   }
 };
 
+// User operations
+export const saveUser = async (user: User) => {
+  try {
+    const userRef = ref(db, `users/${user.uid}`);
+    await set(userRef, user);
+    return user.uid;
+  } catch (error) {
+    console.error('Error saving user:', error);
+    throw error;
+  }
+};
+
+export const getUser = async (uid: string): Promise<User | null> => {
+  try {
+    const userRef = ref(db, `users/${uid}`);
+    const snapshot = await get(userRef);
+    return snapshot.exists() ? snapshot.val() : null;
+  } catch (error) {
+    console.error('Error getting user:', error);
+    return null;
+  }
+};
+
 // Task operations
-export const addNewTask = async (columnId: string, title: string, description?: string) => {
+export const addNewTask = async (columnId: string, title: string, description?: string, userId?: string) => {
   const taskId = uuidv4();
   const now = new Date().toISOString();
   
@@ -136,6 +159,12 @@ export const addNewTask = async (columnId: string, title: string, description?: 
   // Only add description if it has a value (not undefined or empty string)
   if (description && description.trim() !== '') {
     newTask.description = description;
+  }
+
+  // Add user information if available
+  if (userId) {
+    newTask.createdBy = userId;
+    newTask.lastModifiedBy = userId;
   }
   
   try {
@@ -161,7 +190,7 @@ export const addNewTask = async (columnId: string, title: string, description?: 
   }
 };
 
-export const updateTaskDetails = async (taskId: string, updates: Partial<Task>) => {
+export const updateTaskDetails = async (taskId: string, updates: Partial<Task>, userId?: string) => {
   try {
     const taskRef = ref(db, `board/tasks/${taskId}`);
     const snapshot = await get(taskRef);
@@ -172,6 +201,11 @@ export const updateTaskDetails = async (taskId: string, updates: Partial<Task>) 
       const cleanUpdates: Record<string, any> = {
         updatedAt: new Date().toISOString(),
       };
+      
+      // Add user who modified the task
+      if (userId) {
+        cleanUpdates.lastModifiedBy = userId;
+      }
       
       // Add title if it exists
       if (updates.title !== undefined) {
@@ -282,13 +316,17 @@ export const getUserPresence = (callback: (users: UserPresence[]) => void) => {
   });
 };
 
-export const updateUserPresence = (userId: string, online: boolean) => {
+export const updateUserPresence = async (userId: string, online: boolean, displayName?: string, photoURL?: string) => {
   const presenceRef = ref(db, `presence/${userId}`);
   const userStatus: UserPresence = {
     userId,
     online,
     lastActive: new Date().toISOString(),
   };
+
+  // Add user profile info if available
+  if (displayName) userStatus.displayName = displayName;
+  if (photoURL) userStatus.photoURL = photoURL;
   
   set(presenceRef, userStatus);
   
@@ -303,13 +341,13 @@ export const updateUserPresence = (userId: string, online: boolean) => {
 };
 
 // Setup user presence and return cleanup function
-export const setupPresence = (userId: string) => {
+export const setupPresence = (userId: string, displayName?: string, photoURL?: string) => {
   // Set user as online
-  updateUserPresence(userId, true);
+  updateUserPresence(userId, true, displayName, photoURL);
   
   // Return cleanup function to set user as offline when component unmounts
   return () => {
-    updateUserPresence(userId, false);
+    updateUserPresence(userId, false, displayName, photoURL);
   };
 };
 
